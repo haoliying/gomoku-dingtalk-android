@@ -43,6 +43,12 @@ class GameActivity : AppCompatActivity() {
         isRemote = mode == MODE_REMOTE
         aiLevel = GomokuAI.Level.fromIndex(intent.getIntExtra(EXTRA_LEVEL, 1))
 
+        if (isRemote && !RemoteSession.active) {
+            toast("联机会话已失效，请重新加入房间")
+            finish()
+            return
+        }
+
         if (isRemote) {
             myColor = RemoteSession.myColor
             engine = GameEngine(RemoteSession.boardSize, RemoteSession.winLength)

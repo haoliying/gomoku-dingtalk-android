@@ -68,6 +68,10 @@ class RemoteSetupActivity : AppCompatActivity() {
 
     private fun createRoom() {
         if (busy) return
+        if (NetUtils.localIpAddress() == null) {
+            toast("未检测到局域网地址，请先连接 Wi-Fi")
+            return
+        }
         val name = binding.etName.text.toString().trim().ifBlank { "房主" }
         val room = binding.etRoom.text.toString().trim()
         val port = binding.etPort.text.toString().toIntOrNull() ?: 18765
@@ -99,6 +103,10 @@ class RemoteSetupActivity : AppCompatActivity() {
 
     private fun joinRoom() {
         if (busy) return
+        if (NetUtils.localIpAddress() == null) {
+            toast("未检测到局域网地址，请先连接 Wi-Fi")
+            return
+        }
         val name = binding.etName.text.toString().trim().ifBlank { "玩家" }
         val room = binding.etRoom.text.toString().trim()
         val port = binding.etPort.text.toString().toIntOrNull() ?: 18765
