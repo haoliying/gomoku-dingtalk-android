@@ -79,9 +79,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openRemoteSetup() {
-        val intent = Intent(this, RemoteSetupActivity::class.java).apply {
-            putExtra(RemoteSetupActivity.EXTRA_SIZE, boardSize)
-            putExtra(RemoteSetupActivity.EXTRA_WIN, winLength)
+        val intent = Intent(this, DingTalkSetupActivity::class.java).apply {
+            putExtra(DingTalkSetupActivity.EXTRA_SIZE, boardSize)
+            putExtra(DingTalkSetupActivity.EXTRA_WIN, winLength)
         }
         startActivity(intent)
     }

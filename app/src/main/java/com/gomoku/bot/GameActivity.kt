@@ -10,7 +10,7 @@ import com.gomoku.bot.game.GameEngine
 import com.gomoku.bot.game.GomokuAI
 import com.gomoku.bot.game.Stone
 import com.gomoku.bot.net.BotProtocol
-import com.gomoku.bot.net.RemoteSession
+import com.gomoku.bot.net.DingTalkSession
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,7 +32,7 @@ class GameActivity : AppCompatActivity() {
     private var closingDialogShown = false
     private val chatLines = ArrayList<String>()
 
-    private val sessionListener: (RemoteSession.Event) -> Unit = { event -> handleSessionEvent(event) }
+    private val sessionListener: (DingTalkSession.Event) -> Unit = { event -> handleSessionEvent(event) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,16 +43,16 @@ class GameActivity : AppCompatActivity() {
         isRemote = mode == MODE_REMOTE
         aiLevel = GomokuAI.Level.fromIndex(intent.getIntExtra(EXTRA_LEVEL, 1))
 
-        if (isRemote && !RemoteSession.active) {
-            toast("联机会话已失效，请重新加入房间")
+        if (isRemote && !DingTalkSession.active) {
+            toast("联机会话已失效，请重新配置机器人")
             finish()
             return
         }
 
         if (isRemote) {
-            myColor = RemoteSession.myColor
-            engine = GameEngine(RemoteSession.boardSize, RemoteSession.winLength)
-            RemoteSession.onEvent = sessionListener
+            myColor = DingTalkSession.myColor
+            engine = GameEngine(DingTalkSession.boardSize, DingTalkSession.winLength)
+            DingTalkSession.onEvent = sessionListener
         } else {
             engine = GameEngine(
                 intent.getIntExtra(EXTRA_SIZE, 15).coerceIn(9, 19),
@@ -82,8 +82,13 @@ class GameActivity : AppCompatActivity() {
         configureHeader()
         updateStatus()
         if (isRemote) {
-            appendChat("已连接 ${RemoteSession.peerName} · 房间 ${RemoteSession.room}")
-            if (engine.current == myColor) appendChat("你执" + colorName(myColor) + "，你先手")
+            appendChat("房间 ${DingTalkSession.room} · 对手通过钉钉回复坐标落子")
+            if (engine.current == myColor) {
+                appendChat("你执" + colorName(myColor) + "，先在棋盘落子")
+            } else {
+                appendChat("你执" + colorName(myColor) + "，已把开局棋盘发到对方钉钉")
+                DingTalkSession.sendBoard(engine.snapshot())
+            }
         }
     }
 
@@ -102,8 +107,8 @@ class GameActivity : AppCompatActivity() {
             binding.tvBlackName.text = "你（黑）"
             binding.tvWhiteName.text = "AI（白）· ${aiLevel.label}"
         } else if (isRemote) {
-            binding.tvBlackName.text = if (myColor == Stone.BLACK) "${RemoteSession.myName}（黑）" else "${RemoteSession.peerName}（黑）"
-            binding.tvWhiteName.text = if (myColor == Stone.BLACK) "${RemoteSession.peerName}（白）" else "${RemoteSession.myName}（白）"
+            binding.tvBlackName.text = if (myColor == Stone.BLACK) "${DingTalkSession.myName}（黑）" else "${DingTalkSession.peerName}（黑）"
+            binding.tvWhiteName.text = if (myColor == Stone.BLACK) "${DingTalkSession.peerName}（白）" else "${DingTalkSession.myName}（白）"
         } else {
             binding.tvBlackName.text = "黑方"
             binding.tvWhiteName.text = "白方"
@@ -114,7 +119,7 @@ class GameActivity : AppCompatActivity() {
         if (!binding.boardView.interactive) return
         if (engine.winner != null || engine.isDraw) return
         if (isRemote) {
-            if (!RemoteSession.connected) {
+            if (!DingTalkSession.connected) {
                 toast("连接已断开")
                 return
             }
@@ -125,7 +130,7 @@ class GameActivity : AppCompatActivity() {
         }
         if (!engine.place(x, y)) return
         if (isRemote) {
-            RemoteSession.sendMove(x, y, engine.snapshot())
+            DingTalkSession.sendMove(x, y, engine.snapshot())
         }
         afterMove()
     }
@@ -190,7 +195,7 @@ class GameActivity : AppCompatActivity() {
         if (engine.winner != null || engine.isDraw) return false
         return when {
             mode == MODE_PVE -> engine.current == Stone.BLACK
-            isRemote -> engine.current == myColor && RemoteSession.connected
+            isRemote -> engine.current == myColor && DingTalkSession.connected
             else -> true
         }
     }
@@ -221,7 +226,7 @@ class GameActivity : AppCompatActivity() {
 
     private fun requestRestart() {
         if (isRemote) {
-            RemoteSession.requestRestart()
+            DingTalkSession.requestRestart()
             toast("已发送重开请求，等待对方确认")
             return
         }
@@ -240,6 +245,7 @@ class GameActivity : AppCompatActivity() {
         resultDialog?.dismiss()
         binding.boardView.invalidate()
         updateStatus()
+        if (isRemote) DingTalkSession.sendBoard(engine.snapshot(), "新的一局开始。")
     }
 
     private fun showResult(forcedTitle: String? = null) {
@@ -271,7 +277,7 @@ class GameActivity : AppCompatActivity() {
         if (isRemote) {
             builder.setPositiveButton("请求重开") { dialog, _ ->
                 dialog.dismiss()
-                RemoteSession.requestRestart()
+                DingTalkSession.requestRestart()
                 toast("已发送重开请求")
             }
             builder.setNegativeButton("返回") { dialog, _ ->
@@ -291,43 +297,50 @@ class GameActivity : AppCompatActivity() {
         resultDialog = builder.show()
     }
 
-    private fun handleSessionEvent(event: RemoteSession.Event) {
+    private fun handleSessionEvent(event: DingTalkSession.Event) {
         when (event) {
-            is RemoteSession.Event.Message -> handleRemoteMessage(event.msg)
-            is RemoteSession.Event.Error -> toast(event.text)
-            is RemoteSession.Event.Log -> appendChat(event.text)
-            is RemoteSession.Event.Closed -> showConnectionClosed(event.text)
-            is RemoteSession.Event.Joined, is RemoteSession.Event.Waiting -> Unit
+            is DingTalkSession.Event.Message -> handleRemoteMessage(event.msg)
+            is DingTalkSession.Event.Error -> toast(event.text)
+            is DingTalkSession.Event.Log -> appendChat(event.text)
+            is DingTalkSession.Event.Closed -> showConnectionClosed(event.text)
+            is DingTalkSession.Event.Started -> Unit
         }
     }
 
     private fun handleRemoteMessage(msg: com.gomoku.bot.net.BotMessage) {
         when (msg.type) {
             "move" -> {
-                val moves = BotProtocol.parseMoves(msg.moves)
-                if (moves.isEmpty()) return
-                if (moves.size < engine.moveCount) {
-                    RemoteSession.sendSync(engine.snapshot())
+                val coord = BotProtocol.coordinate(msg.x, msg.y)
+                if (engine.winner != null || engine.isDraw) {
+                    DingTalkSession.sendBoard(engine.snapshot(), "本局已结束，回复「重开」开始新的一局。")
                     return
                 }
-                engine.rebuild(moves)
+                if (engine.current == myColor) {
+                    DingTalkSession.sendBoard(engine.snapshot(), "还没轮到你，请等我落子。")
+                    return
+                }
+                if (!engine.place(msg.x, msg.y)) {
+                    DingTalkSession.sendBoard(engine.snapshot(), "坐标 $coord 无法落子，请重新回复。")
+                    return
+                }
                 binding.boardView.invalidate()
                 updateStatus()
-                appendChat("${msg.name} 落子 ${BotProtocol.coordinate(msg.x, msg.y)}")
+                appendChat("对手落子 $coord")
+                DingTalkSession.sendBoard(engine.snapshot())
                 if (engine.winner != null || engine.isDraw) showResult()
             }
 
-            "chat" -> appendChat("${msg.name}：${msg.text}")
+            "chat" -> appendChat(msg.text)
 
             "restart_req" -> {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("对方请求重开")
-                    .setMessage("${msg.name} 请求重新开始一局。")
+                    .setMessage("对手请求重新开始一局。")
                     .setPositiveButton("同意") { _, _ ->
-                        RemoteSession.replyRestart(true)
+                        DingTalkSession.replyRestart(true)
                         resetGame()
                     }
-                    .setNegativeButton("拒绝") { _, _ -> RemoteSession.replyRestart(false) }
+                    .setNegativeButton("拒绝") { _, _ -> DingTalkSession.replyRestart(false) }
                     .show()
             }
 
@@ -339,7 +352,7 @@ class GameActivity : AppCompatActivity() {
             "restart_no" -> toast("对方拒绝重开")
 
             "surrender" -> {
-                appendChat("${msg.name} 认输")
+                appendChat("对手认输")
                 showResult(forcedTitle = "对方认输，你赢了")
             }
 
@@ -352,9 +365,9 @@ class GameActivity : AppCompatActivity() {
                 }
             }
 
-            "sync_req" -> RemoteSession.sendSync(engine.snapshot())
+            "sync_req" -> DingTalkSession.sendSync(engine.snapshot())
 
-            "leave" -> showConnectionClosed("${msg.name} 离开了房间")
+            "leave" -> showConnectionClosed("对手结束了本局")
         }
     }
 
@@ -374,7 +387,7 @@ class GameActivity : AppCompatActivity() {
         if (text.isEmpty()) return
         binding.etChat.setText("")
         appendChat("我：$text")
-        RemoteSession.sendChat(text)
+        DingTalkSession.sendChat(text)
     }
 
     private fun appendChat(text: String) {
@@ -395,8 +408,8 @@ class GameActivity : AppCompatActivity() {
     private fun exitGame() {
         aiJob?.cancel()
         if (isRemote) {
-            RemoteSession.sendLeave()
-            RemoteSession.close()
+            DingTalkSession.sendLeave()
+            DingTalkSession.close()
         }
         finish()
     }
@@ -413,11 +426,11 @@ class GameActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (RemoteSession.onEvent === sessionListener) {
-            RemoteSession.onEvent = null
+        if (DingTalkSession.onEvent === sessionListener) {
+            DingTalkSession.onEvent = null
         }
         if (isRemote && isFinishing) {
-            RemoteSession.close()
+            DingTalkSession.close()
         }
     }
 

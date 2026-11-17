@@ -48,7 +48,7 @@
                     style="@style/Text.Gomoku.Body"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="内置机器人 · 局域网对战"
+                    android:text="企业内部应用 · Stream 长连接"
                     android:textSize="11sp" />
             </LinearLayout>
         </LinearLayout>
@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:lineSpacingExtra="3dp"
-            android:text="每台设备都会启动一个钉钉机器人服务。房主创建房间后把地址发给对方，对方填入即可加入；棋盘信息、落子与聊天通过钉钉消息格式同步。"
+            android:text="你的手机作为棋盘：机器人把每一步棋局发到对方的钉钉，对方直接回复坐标（如 H8）即可落子，无需安装本应用。"
             android:textSize="12sp" />
 
         <com.google.android.material.card.MaterialCardView
@@ -82,23 +82,23 @@
                     style="@style/Text.Gomoku.Section"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="我的机器人" />
+                    android:text="机器人凭据" />
 
                 <TextView
                     style="@style/Text.Gomoku.Body"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="昵称"
-                    android:textSize="12sp" />
+                    android:layout_marginTop="2dp"
+                    android:text="钉钉开放平台 → 企业内部应用 → 机器人"
+                    android:textSize="11sp" />
 
                 <EditText
-                    android:id="@+id/etName"
+                    android:id="@+id/etAppKey"
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="10dp"
                     android:background="@drawable/bg_input"
-                    android:hint="棋友"
+                    android:hint="AppKey（Client ID）"
                     android:importantForAutofill="no"
                     android:inputType="text"
                     android:maxLines="1"
@@ -106,109 +106,17 @@
                     android:paddingEnd="12dp"
                     android:textColor="@color/ink"
                     android:textColorHint="@color/ink_soft"
-                    android:textSize="14sp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:orientation="horizontal">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Text.Gomoku.Body"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="房间号"
-                            android:textSize="12sp" />
-
-                        <EditText
-                            android:id="@+id/etRoom"
-                            android:layout_width="match_parent"
-                            android:layout_height="46dp"
-                            android:layout_marginTop="4dp"
-                            android:background="@drawable/bg_input"
-                            android:hint="1234"
-                            android:importantForAutofill="no"
-                            android:inputType="text"
-                            android:maxLines="1"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:textColor="@color/ink"
-                            android:textColorHint="@color/ink_soft"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Text.Gomoku.Body"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="机器人端口"
-                            android:textSize="12sp" />
-
-                        <EditText
-                            android:id="@+id/etPort"
-                            android:layout_width="match_parent"
-                            android:layout_height="46dp"
-                            android:layout_marginTop="4dp"
-                            android:background="@drawable/bg_input"
-                            android:hint="18765"
-                            android:importantForAutofill="no"
-                            android:inputType="number"
-                            android:maxLines="1"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:textColor="@color/ink"
-                            android:textColorHint="@color/ink_soft"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tvBotAddress"
-                    style="@style/Text.Gomoku.Body"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:background="@drawable/bg_pill"
-                    android:paddingStart="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="10dp"
-                    android:text="本机机器人地址加载中…"
-                    android:textColor="@color/brand_dark"
-                    android:textIsSelectable="true"
-                    android:textSize="12sp" />
-
-                <TextView
-                    style="@style/Text.Gomoku.Body"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="可选：钉钉群机器人 Webhook（同步对局动态）"
-                    android:textSize="11sp" />
+                    android:textSize="13sp" />
 
                 <EditText
-                    android:id="@+id/etWebhook"
+                    android:id="@+id/etAppSecret"
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="8dp"
                     android:background="@drawable/bg_input"
-                    android:hint="https://oapi.dingtalk.com/robot/send?access_token=…"
+                    android:hint="AppSecret（Client Secret）"
                     android:importantForAutofill="no"
-                    android:inputType="textUri"
+                    android:inputType="textPassword"
                     android:maxLines="1"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
@@ -216,12 +124,21 @@
                     android:textColorHint="@color/ink_soft"
                     android:textSize="13sp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCreate"
+                <EditText
+                    android:id="@+id/etRobotCode"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="16dp"
-                    android:text="创建房间（执黑）" />
+                    android:layout_height="46dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:hint="RobotCode（机器人编码，ding 开头）"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/ink"
+                    android:textColorHint="@color/ink_soft"
+                    android:textSize="13sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -245,25 +162,17 @@
                     style="@style/Text.Gomoku.Section"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="加入房间" />
-
-                <TextView
-                    style="@style/Text.Gomoku.Body"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="填写房主机器人地址，例如 192.168.1.8:18765"
-                    android:textSize="12sp" />
+                    android:text="对局设置" />
 
                 <EditText
-                    android:id="@+id/etPeer"
+                    android:id="@+id/etName"
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:layout_marginTop="10dp"
                     android:background="@drawable/bg_input"
-                    android:hint="192.168.1.8:18765"
+                    android:hint="我的昵称"
                     android:importantForAutofill="no"
-                    android:inputType="textUri"
+                    android:inputType="text"
                     android:maxLines="1"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
@@ -271,14 +180,93 @@
                     android:textColorHint="@color/ink_soft"
                     android:textSize="14sp" />
 
+                <EditText
+                    android:id="@+id/etRoom"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:hint="房间号，例如 1234"
+                    android:importantForAutofill="no"
+                    android:inputType="number"
+                    android:maxLines="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/ink"
+                    android:textColorHint="@color/ink_soft"
+                    android:textSize="14sp" />
+
+                <TextView
+                    style="@style/Text.Gomoku.Body"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="我执"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupColor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:selectionRequired="true"
+                    app:singleLine="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipBlack"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="黑棋（先手）" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipWhite"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="白棋（后手）" />
+                </com.google.android.material.chip.ChipGroup>
+
+                <EditText
+                    android:id="@+id/etPeerId"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_input"
+                    android:hint="对方钉钉 userId（staffId）"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/ink"
+                    android:textColorHint="@color/ink_soft"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/etConversationId"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_input"
+                    android:hint="可选：群会话 openConversationId（留空则只发单聊）"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/ink"
+                    android:textColorHint="@color/ink_soft"
+                    android:textSize="13sp" />
+
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnJoin"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:id="@+id/btnStart"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
-                    android:layout_marginTop="12dp"
-                    android:text="加入房间（执白）"
-                    app:cornerRadius="14dp" />
+                    android:layout_marginTop="16dp"
+                    android:text="连接机器人并开始对局" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -313,7 +301,7 @@
                     android:fontFamily="monospace"
                     android:lineSpacingExtra="3dp"
                     android:minLines="3"
-                    android:text="尚未启动机器人。"
+                    android:text="尚未连接机器人。"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
