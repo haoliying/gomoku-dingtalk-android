@@ -12,3 +12,4 @@
 /app/release
 *.apk
 !apk/*.apk
+!releases/*.apk
