@@ -80,9 +80,10 @@ object DingTalkSession {
         val client = DingTalkStreamClient(
             config = config,
             onBotMessage = ::onBotPayload,
+            onEventMessage = ::onGroupEvent,
             onLog = { emit(Event.Log(it)) },
             onError = { emit(Event.Error(it)) },
-            onReady = { emit(Event.Log("机器人已就绪，对手在钉钉里的回复会自动同步")) }
+            onReady = { emit(Event.Log("机器人已就绪，群内走法会自动同步")) }
         )
         stream = client
         client.start()
@@ -92,36 +93,43 @@ object DingTalkSession {
         return null
     }
 
-    /** App 侧落子后，把最新棋局发给对手。 */
+    /** App 侧落子后，把最新棋局以结构化协议发到群消息总线。 */
     fun sendMove(x: Int, y: Int, snapshot: String) {
         val cfg = config ?: return
         val moves = BotProtocol.parseMoves(snapshot)
-        sendText(
-            DingTalkText.boardMessage(
-                room = cfg.room,
-                nickname = myName,
-                myColor = myColor.value,
-                size = boardSize,
-                win = winLength,
-                moves = moves
-            )
+        val message = BotMessage(
+            type = "move",
+            room = cfg.room,
+            seq = moves.size,
+            from = cfg.robotCode,
+            name = myName,
+            color = myColor.value,
+            x = x,
+            y = y,
+            size = boardSize,
+            win = winLength,
+            moves = snapshot
         )
+        sendProtocol(message)
     }
 
     /** 同步棋盘（对手落子后、请求同步、重开等场景）。 */
     fun sendBoard(snapshot: String, extra: String = "") {
         val cfg = config ?: return
-        sendText(
-            DingTalkText.boardMessage(
-                room = cfg.room,
-                nickname = myName,
-                myColor = myColor.value,
-                size = boardSize,
-                win = winLength,
-                moves = BotProtocol.parseMoves(snapshot),
-                extra = extra
-            )
+        val moves = BotProtocol.parseMoves(snapshot)
+        val message = BotMessage(
+            type = "sync",
+            room = cfg.room,
+            seq = moves.size,
+            from = cfg.robotCode,
+            name = myName,
+            color = myColor.value,
+            size = boardSize,
+            win = winLength,
+            moves = snapshot,
+            text = extra
         )
+        sendProtocol(message)
     }
 
     fun sendChat(text: String) {
@@ -165,15 +173,41 @@ object DingTalkSession {
         room = ""
     }
 
+    /** 发送结构化协议消息到群消息总线（两个 App 互相识别的核心）。 */
+    private fun sendProtocol(message: BotMessage) {
+        val cfg = config ?: return
+        val payload = BotProtocol.encode(message)
+        sender.execute {
+            try {
+                var sent = false
+                // 优先发到群（消息总线），双方机器人通过事件订阅监听
+                if (cfg.openConversationId.isNotBlank()) {
+                    try {
+                        DingTalkApi.sendGroup(cfg, payload)
+                        sent = true
+                    } catch (e: Exception) {
+                        emit(Event.Log("群消息发送失败，回退单聊：${e.message ?: "网络异常"}"))
+                    }
+                }
+                // 兼容传统单聊方式（对方无 App 时人工回复）
+                if (!sent && cfg.peerUserId.isNotBlank()) {
+                    DingTalkApi.sendOto(cfg, payload)
+                    sent = true
+                }
+                if (!sent) {
+                    emit(Event.Error("没有可用的发送目标，请填写群会话 ID 或对方 userId"))
+                }
+            } catch (e: Exception) {
+                emit(Event.Error("钉钉消息发送失败：${e.message ?: e.javaClass.simpleName}"))
+            }
+        }
+    }
+
     private fun sendText(text: String) {
         val cfg = config ?: return
         sender.execute {
             try {
                 var sent = false
-                if (cfg.peerUserId.isNotBlank()) {
-                    DingTalkApi.sendOto(cfg, text)
-                    sent = true
-                }
                 if (cfg.openConversationId.isNotBlank()) {
                     try {
                         DingTalkApi.sendGroup(cfg, text)
@@ -181,6 +215,10 @@ object DingTalkSession {
                     } catch (e: Exception) {
                         if (!sent) emit(Event.Error("群消息发送失败：${e.message ?: "网络异常"}"))
                     }
+                }
+                if (!sent && cfg.peerUserId.isNotBlank()) {
+                    DingTalkApi.sendOto(cfg, text)
+                    sent = true
                 }
                 if (!sent) {
                     emit(Event.Error("没有可用的发送目标，请填写对方 userId 或群会话 ID"))
@@ -207,6 +245,42 @@ object DingTalkSession {
         val message = DingTalkText.parse(content, boardSize, room, pendingRestart)
         if (message == null) {
             emit(Event.Log("未识别的指令：${content.trim().take(40)}"))
+            return
+        }
+        if (message.type == "restart_ok") pendingRestart = false
+        emit(Event.Message(message))
+    }
+
+    /**
+     * 处理群消息事件订阅推送（user_im_message_receive_group）。
+     *
+     * 群里任何消息（包括对方机器人发出的走法）都会推送到这里。
+     * 提取消息文本，尝试解析 gomoku 结构化协议；忽略自己发出的消息。
+     */
+    private fun onGroupEvent(json: JSONObject) {
+        val cfg = config ?: return
+        // 群消息事件的 payload 可能直接是消息体，也可能带事件包装
+        val msg = json.optJSONObject("msg") ?: json
+        val msgtype = msg.optString("msgtype")
+        if (msgtype.isNotEmpty() && msgtype != "text") return
+        val content = msg.optJSONObject("text")?.optString("content")
+            ?: msg.optString("content").orEmpty()
+        if (content.isBlank()) return
+
+        // 尝试解析 gomoku 结构化协议
+        var message = BotProtocol.decode(content)
+        if (message != null) {
+            // 过滤自己发出的结构化消息
+            if (message.from.isNotBlank() && message.from == cfg.robotCode) {
+                return
+            }
+        } else {
+            // 非结构化消息：尝试按文本指令解析（重开、认输等兼容指令）
+            message = DingTalkText.parse(content, boardSize, room, pendingRestart)
+            if (message == null) return
+        }
+        // 房间号校验
+        if (room.isNotBlank() && message.room.isNotBlank() && message.room != room) {
             return
         }
         if (message.type == "restart_ok") pendingRestart = false

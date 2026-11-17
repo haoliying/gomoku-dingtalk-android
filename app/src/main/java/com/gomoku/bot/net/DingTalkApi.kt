@@ -16,7 +16,9 @@ data class DingTalkConfig(
     val peerUserId: String,
     val openConversationId: String = "",
     val room: String = "",
-    val nickname: String = ""
+    val nickname: String = "",
+    /** 对方机器人的 robotCode，用于在群消息总线中过滤掉自己发出的消息。 */
+    val peerRobotCode: String = ""
 )
 
 /**
@@ -79,18 +81,24 @@ object DingTalkApi {
         post("$BASE/v1.0/robot/groupMessages/send", body.toString(), accessToken(config))
     }
 
-    /** 注册 Stream 连接凭证，返回 endpoint 与一次性 ticket。 */
+    /**
+     * 注册 Stream 连接凭证，返回 endpoint 与一次性 ticket。
+     *
+     * 订阅两类推送：
+     * - EVENT（topic="*"）：接收开发者后台已勾选的全部事件订阅，
+     *   用于监听群里所有消息（含对方机器人发出的走法），实现全自动收发。
+     * - CALLBACK（/v1.0/im/bot/messages/get）：机器人消息回调，
+     *   兼容单聊/群内 @机器人 的传统联机方式。
+     */
     fun openConnection(config: DingTalkConfig): JSONObject {
-        val subscriptions = JSONArray().put(
-            JSONObject()
-                .put("topic", "/v1.0/im/bot/messages/get")
-                .put("type", "CALLBACK")
-        )
+        val subscriptions = JSONArray()
+            .put(JSONObject().put("topic", "*").put("type", "EVENT"))
+            .put(JSONObject().put("topic", "/v1.0/im/bot/messages/get").put("type", "CALLBACK"))
         val body = JSONObject()
             .put("clientId", config.appKey)
             .put("clientSecret", config.appSecret)
             .put("subscriptions", subscriptions)
-            .put("ua", "gomoku-android/1.1.0")
+            .put("ua", "gomoku-android/1.2.0")
         return post("$BASE/v1.0/gateway/connections/open", body.toString(), null)
     }
 

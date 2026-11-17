@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DingTalkStreamClient(
     private val config: DingTalkConfig,
     private val onBotMessage: (JSONObject) -> Unit,
+    private val onEventMessage: (JSONObject) -> Unit,
     private val onLog: (String) -> Unit,
     private val onError: (String) -> Unit,
     private val onReady: () -> Unit
@@ -133,6 +134,19 @@ class DingTalkStreamClient(
                 ack(webSocket, messageId, JSONObject().put("opaque", opaque).toString())
             }
             // disconnect：服务端会主动断开，交给 onClosed/onFailure 触发重连
+            return
+        }
+
+        if (type == "EVENT") {
+            // 事件订阅推送：群消息事件（user_im_message_receive_group 等）。
+            // data 为事件 JSON 字符串，包含消息内容、发送者、会话等信息。
+            val payload = try {
+                JSONObject(data)
+            } catch (_: Exception) {
+                null
+            }
+            if (payload != null) onEventMessage(payload)
+            ack(webSocket, messageId, "{\"status\":\"SUCCESS\"}")
             return
         }
 
