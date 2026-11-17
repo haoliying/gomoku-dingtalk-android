@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#1F2A26</color>
+    <color name="ink_soft">#5A6B64</color>
+    <color name="paper">#F4EFE4</color>
+    <color name="paper_dark">#EAE2D3</color>
+    <color name="brand">#2F5D50</color>
+    <color name="brand_dark">#234539</color>
+    <color name="brand_light">#DCE9E3</color>
+    <color name="accent">#C86B4A</color>
+    <color name="board_wood">#E2B778</color>
+    <color name="board_wood_dark">#D3A25E</color>
+    <color name="board_line">#8A6A42</color>
+    <color name="stone_black">#262626</color>
+    <color name="stone_white">#FAFAF7</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+</resources>
