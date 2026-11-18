@@ -2,6 +2,7 @@ package com.gomoku.bot
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -10,6 +11,7 @@ import com.gomoku.bot.game.Stone
 import com.gomoku.bot.net.DingTalkApi
 import com.gomoku.bot.net.DingTalkConfig
 import com.gomoku.bot.net.DingTalkSession
+import com.gomoku.bot.net.cleanCredential
 import kotlin.random.Random
 
 class DingTalkSetupActivity : AppCompatActivity() {
@@ -44,6 +46,15 @@ class DingTalkSetupActivity : AppCompatActivity() {
             binding.chipBlack.isChecked = true
         }
 
+        binding.cbHideSecret.setOnCheckedChangeListener { _, hide ->
+            binding.etAppSecret.inputType = if (hide) {
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            } else {
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            }
+            binding.etAppSecret.setSelection(binding.etAppSecret.text?.length ?: 0)
+        }
+
         binding.btnTest.setOnClickListener { testConnection() }
         binding.btnStart.setOnClickListener { startGame() }
         binding.btnBack.setOnClickListener {
@@ -62,14 +73,20 @@ class DingTalkSetupActivity : AppCompatActivity() {
     }
 
     private fun buildConfig(): DingTalkConfig? {
-        val appKey = binding.etAppKey.text.toString().trim()
-        val appSecret = binding.etAppSecret.text.toString().trim()
-        val robotCode = binding.etRobotCode.text.toString().trim()
-        val peerId = binding.etPeerId.text.toString().trim()
-        val conversationId = binding.etConversationId.text.toString().trim()
+        val rawKey = binding.etAppKey.text.toString()
+        val rawSecret = binding.etAppSecret.text.toString()
+        val appKey = cleanCredential(rawKey)
+        val appSecret = cleanCredential(rawSecret)
+        val robotCode = cleanCredential(binding.etRobotCode.text.toString())
+        val peerId = cleanCredential(binding.etPeerId.text.toString())
+        val conversationId = cleanCredential(binding.etConversationId.text.toString())
         val room = binding.etRoom.text.toString().trim()
         val name = binding.etName.text.toString().trim().ifBlank { "棋友" }
         val color = if (binding.chipWhite.isChecked) Stone.WHITE else Stone.BLACK
+
+        if (rawKey != appKey || rawSecret != appSecret) {
+            toast("已自动清除凭据中的空格/不可见字符")
+        }
 
         if (appKey.isEmpty()) { toast("请填写 AppKey"); return null }
         if (appSecret.isEmpty()) { toast("请填写 AppSecret"); return null }

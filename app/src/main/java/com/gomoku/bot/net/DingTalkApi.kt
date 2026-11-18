@@ -41,6 +41,29 @@ class DingTalkApiException(
 data class ConnResult(val step: String, val ok: Boolean, val detail: String)
 
 /**
+ * 清理凭据：去除所有空白字符（含中间换行/制表符）与零宽字符。
+ * 从钉钉开放平台复制粘贴时常带入这些不可见字符，导致鉴权失败。
+ */
+fun cleanCredential(raw: String): String {
+    val sb = StringBuilder(raw.length)
+    for (c in raw) {
+        if (c.isWhitespace()) continue
+        when (c) {
+            '​', '‌', '‍', '﻿', '⁠', '᠎' -> continue
+        }
+        sb.append(c)
+    }
+    return sb.toString()
+}
+
+/** 脱敏显示：保留前 4 后 2，便于与开放平台核对。 */
+private fun mask(s: String): String = when {
+    s.isEmpty() -> "(空)"
+    s.length <= 6 -> s.take(1) + "…(" + s.length + "位)"
+    else -> s.take(4) + "…" + s.takeLast(2) + "(" + s.length + "位)"
+}
+
+/**
  * 钉钉开放平台调用：获取 token、机器人单聊/群聊发消息、注册 Stream 长连接。
  */
 object DingTalkApi {
@@ -127,11 +150,16 @@ object DingTalkApi {
      */
     fun testConnection(config: DingTalkConfig): List<ConnResult> {
         val results = ArrayList<ConnResult>()
+        results.add(inspectCredentials(config))
         try {
             accessToken(config)
             results.add(ConnResult("获取 accessToken", true, "成功"))
         } catch (e: DingTalkApiException) {
-            results.add(ConnResult("获取 accessToken", false, e.format("失败")))
+            var detail = e.format("失败")
+            if (e.code == "invalidClientIdOrSecret" || e.httpCode == 400) {
+                detail += "\n请逐项核对：① AppKey 与 AppSecret 是否填反 ② 是否「企业内部应用」的凭据（非小程序/第三方应用）③ 复制是否完整、无多余字符"
+            }
+            results.add(ConnResult("获取 accessToken", false, detail))
             return results
         } catch (e: Exception) {
             results.add(ConnResult("获取 accessToken", false, e.message ?: e.javaClass.simpleName))
@@ -151,6 +179,29 @@ object DingTalkApi {
             results.add(ConnResult("Stream 握手", false, e.message ?: e.javaClass.simpleName))
         }
         return results
+    }
+
+    /**
+     * 凭据特征诊断：显示长度与脱敏前后缀，并检测常见填写错误。
+     * 信息性步骤（ok 恒为 true，不阻断流程），警告写入 detail。
+     */
+    private fun inspectCredentials(config: DingTalkConfig): ConnResult {
+        val key = config.appKey
+        val secret = config.appSecret
+        val issues = ArrayList<String>()
+        if (!key.startsWith("ding")) issues.add("AppKey 通常以 ding 开头，请确认是否复制正确")
+        if (secret.startsWith("ding")) issues.add("AppSecret 以 ding 开头，很可能与 AppKey 填反了")
+        if (key.isNotEmpty() && key.length < 12) issues.add("AppKey 长度偏短，可能未复制完整")
+        if (secret.isNotEmpty() && secret.length < 12) issues.add("AppSecret 长度偏短，可能未复制完整")
+        if (key == secret && key.isNotEmpty()) issues.add("AppKey 与 AppSecret 内容相同，通常不应一致")
+        val detail = buildString {
+            append("AppKey ").append(mask(key))
+            append("；AppSecret ").append(mask(secret))
+            if (issues.isNotEmpty()) {
+                append("\n⚠ ").append(issues.joinToString("；"))
+            }
+        }
+        return ConnResult("凭据检查", true, detail)
     }
 
     private fun post(url: String, payload: String, token: String?): JSONObject {
