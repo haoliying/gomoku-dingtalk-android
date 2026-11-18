@@ -69,6 +69,9 @@ class DingTalkStreamClient(
             }
             val url = if (endpoint.contains("?")) "$endpoint&ticket=$ticket" else "$endpoint?ticket=$ticket"
             socket = client.newWebSocket(Request.Builder().url(url).build(), listener)
+        } catch (e: DingTalkApiException) {
+            onError(e.format("Stream 握手失败"))
+            scheduleRetry()
         } catch (e: Exception) {
             onError("连接钉钉失败：${e.message ?: e.javaClass.simpleName}")
             scheduleRetry()

@@ -21,6 +21,25 @@ data class DingTalkConfig(
     val peerRobotCode: String = ""
 )
 
+/** 钉钉接口调用异常，保留 HTTP 状态、业务码、错误信息与 requestId 便于排查。 */
+class DingTalkApiException(
+    val httpCode: Int,
+    val code: String,
+    val detail: String,
+    val requestId: String
+) : Exception(detail) {
+    fun format(step: String): String {
+        val parts = mutableListOf(step, "HTTP $httpCode")
+        if (code.isNotEmpty()) parts.add("code=$code")
+        if (requestId.isNotEmpty()) parts.add("requestId=$requestId")
+        parts.add(detail)
+        return parts.joinToString(" · ")
+    }
+}
+
+/** 单步连接测试结果。 */
+data class ConnResult(val step: String, val ok: Boolean, val detail: String)
+
 /**
  * 钉钉开放平台调用：获取 token、机器人单聊/群聊发消息、注册 Stream 长连接。
  */
@@ -102,15 +121,56 @@ object DingTalkApi {
         return post("$BASE/v1.0/gateway/connections/open", body.toString(), null)
     }
 
+    /**
+     * 分两步测试连接：先获取 accessToken，再注册 Stream 握手。
+     * 任一步失败都会把 code/message/requestId 带回来，方便定位鉴权问题。
+     */
+    fun testConnection(config: DingTalkConfig): List<ConnResult> {
+        val results = ArrayList<ConnResult>()
+        try {
+            accessToken(config)
+            results.add(ConnResult("获取 accessToken", true, "成功"))
+        } catch (e: DingTalkApiException) {
+            results.add(ConnResult("获取 accessToken", false, e.format("失败")))
+            return results
+        } catch (e: Exception) {
+            results.add(ConnResult("获取 accessToken", false, e.message ?: e.javaClass.simpleName))
+            return results
+        }
+        try {
+            val json = openConnection(config)
+            val endpoint = json.optString("endpoint")
+            if (endpoint.isBlank()) {
+                results.add(ConnResult("Stream 握手", false, "未返回 endpoint"))
+            } else {
+                results.add(ConnResult("Stream 握手", true, "成功"))
+            }
+        } catch (e: DingTalkApiException) {
+            results.add(ConnResult("Stream 握手", false, e.format("失败")))
+        } catch (e: Exception) {
+            results.add(ConnResult("Stream 握手", false, e.message ?: e.javaClass.simpleName))
+        }
+        return results
+    }
+
     private fun post(url: String, payload: String, token: String?): JSONObject {
         val builder = Request.Builder().url(url).post(payload.toRequestBody(JSON))
         if (!token.isNullOrBlank()) builder.header("x-acs-dingtalk-access-token", token)
         client.newCall(builder.build()).execute().use { response ->
             val text = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IllegalStateException("钉钉接口 ${response.code}：${text.take(200)}")
+            val body = runCatching { if (text.isBlank()) JSONObject() else JSONObject(text) }.getOrDefault(JSONObject())
+            val code = body.optString("code")
+            val message = body.optString("message")
+            val requestId = body.optString("requestId")
+            if (!response.isSuccessful || (code.isNotEmpty() && message.isNotEmpty() && code != "0")) {
+                throw DingTalkApiException(
+                    httpCode = response.code,
+                    code = code,
+                    detail = if (message.isNotEmpty()) message else text.take(200),
+                    requestId = requestId
+                )
             }
-            return if (text.isBlank()) JSONObject() else JSONObject(text)
+            return body
         }
     }
 }

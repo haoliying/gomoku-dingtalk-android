@@ -7,6 +7,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.gomoku.bot.databinding.ActivityDingtalkSetupBinding
 import com.gomoku.bot.game.Stone
+import com.gomoku.bot.net.DingTalkApi
 import com.gomoku.bot.net.DingTalkConfig
 import com.gomoku.bot.net.DingTalkSession
 import kotlin.random.Random
@@ -43,6 +44,7 @@ class DingTalkSetupActivity : AppCompatActivity() {
             binding.chipBlack.isChecked = true
         }
 
+        binding.btnTest.setOnClickListener { testConnection() }
         binding.btnStart.setOnClickListener { startGame() }
         binding.btnBack.setOnClickListener {
             DingTalkSession.close()
@@ -59,7 +61,7 @@ class DingTalkSetupActivity : AppCompatActivity() {
         DingTalkSession.onEvent = sessionListener
     }
 
-    private fun startGame() {
+    private fun buildConfig(): DingTalkConfig? {
         val appKey = binding.etAppKey.text.toString().trim()
         val appSecret = binding.etAppSecret.text.toString().trim()
         val robotCode = binding.etRobotCode.text.toString().trim()
@@ -69,14 +71,13 @@ class DingTalkSetupActivity : AppCompatActivity() {
         val name = binding.etName.text.toString().trim().ifBlank { "棋友" }
         val color = if (binding.chipWhite.isChecked) Stone.WHITE else Stone.BLACK
 
-        if (room.isEmpty()) {
-            toast("请填写房间号")
-            return
-        }
+        if (appKey.isEmpty()) { toast("请填写 AppKey"); return null }
+        if (appSecret.isEmpty()) { toast("请填写 AppSecret"); return null }
+        if (robotCode.isEmpty()) { toast("请填写 RobotCode"); return null }
         if (peerId.isEmpty() && conversationId.isEmpty()) {
-            toast("请填写对方钉钉 userId，或群会话 ID")
-            return
+            toast("请填写对方钉钉 userId，或群会话 ID"); return null
         }
+        if (room.isEmpty()) { toast("请填写房间号"); return null }
 
         Prefs.saveDingTalk(
             context = this,
@@ -89,27 +90,70 @@ class DingTalkSetupActivity : AppCompatActivity() {
             color = color.value,
             nickname = name
         )
-
-        val error = DingTalkSession.start(
-            config = DingTalkConfig(
-                appKey = appKey,
-                appSecret = appSecret,
-                robotCode = robotCode,
-                peerUserId = peerId,
-                openConversationId = conversationId,
-                room = room,
-                nickname = name
-            ),
-            size = boardSize,
-            win = winLength,
-            color = color,
-            name = name
+        return DingTalkConfig(
+            appKey = appKey,
+            appSecret = appSecret,
+            robotCode = robotCode,
+            peerUserId = peerId,
+            openConversationId = conversationId,
+            room = room,
+            nickname = name
         )
-        if (error != null) {
-            toast(error)
-            return
-        }
-        openGame()
+    }
+
+    private fun selectedColor() = if (binding.chipWhite.isChecked) Stone.WHITE else Stone.BLACK
+
+    private fun selectedName() = binding.etName.text.toString().trim().ifBlank { "棋友" }
+
+    private fun testConnection() {
+        val config = buildConfig() ?: return
+        appendLog("正在测试连接…")
+        binding.btnTest.isEnabled = false
+        Thread {
+            val results = DingTalkApi.testConnection(config)
+            runOnUiThread {
+                binding.btnTest.isEnabled = true
+                results.forEach { r ->
+                    appendLog("${if (r.ok) "✓" else "✗"} ${r.step}：${r.detail}")
+                }
+                if (results.all { it.ok }) {
+                    appendLog("连接测试全部通过，可以开始对局。")
+                } else {
+                    appendLog("连接测试未通过，请根据上方错误排查。")
+                }
+            }
+        }.start()
+    }
+
+    private fun startGame() {
+        val config = buildConfig() ?: return
+        appendLog("正在验证凭据并连接…")
+        binding.btnStart.isEnabled = false
+        Thread {
+            val results = DingTalkApi.testConnection(config)
+            runOnUiThread {
+                binding.btnStart.isEnabled = true
+                results.forEach { r ->
+                    appendLog("${if (r.ok) "✓" else "✗"} ${r.step}：${r.detail}")
+                }
+                if (results.any { !it.ok }) {
+                    toast("凭据验证未通过，请检查后重试")
+                    return@runOnUiThread
+                }
+                val error = DingTalkSession.start(
+                    config = config,
+                    size = boardSize,
+                    win = winLength,
+                    color = selectedColor(),
+                    name = selectedName()
+                )
+                if (error != null) {
+                    toast(error)
+                    return@runOnUiThread
+                }
+                openGame()
+            }
+        }.start()
     }
 
     private fun handleSessionEvent(event: DingTalkSession.Event) {
