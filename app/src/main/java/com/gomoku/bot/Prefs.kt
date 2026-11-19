@@ -1,6 +1,7 @@
 package com.gomoku.bot
 
 import android.content.Context
+import java.util.UUID
 
 /** 本地偏好设置。 */
 object Prefs {
@@ -17,6 +18,10 @@ object Prefs {
     private const val KEY_CONVERSATION = "dingtalk_conversation"
     private const val KEY_ROOM = "dingtalk_room"
     private const val KEY_COLOR = "dingtalk_color"
+    private const val KEY_PLAYER_ID = "player_id"
+    private const val KEY_USER_TOKEN = "dingtalk_user_token"
+    private const val KEY_USER_TOKEN_AT = "dingtalk_user_token_at"
+    private const val KEY_SUB_ID = "dingtalk_sub_id"
 
     private fun sp(context: Context) = context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
@@ -38,11 +43,42 @@ object Prefs {
         sp(context).edit().putInt(KEY_LEVEL, value).apply()
     }
 
+    /** 本机唯一标识：首次使用时生成，作为默认昵称（UUID）。 */
+    fun playerId(context: Context): String {
+        val sp = sp(context)
+        val existing = sp.getString(KEY_PLAYER_ID, null)
+        if (!existing.isNullOrBlank()) return existing
+        val created = UUID.randomUUID().toString()
+        sp.edit().putString(KEY_PLAYER_ID, created).apply()
+        return created
+    }
+
     fun nickname(context: Context): String =
-        sp(context).getString(KEY_NICKNAME, "棋友") ?: "棋友"
+        sp(context).getString(KEY_NICKNAME, null).orEmpty().ifBlank { playerId(context) }
 
     fun setNickname(context: Context, value: String) {
         sp(context).edit().putString(KEY_NICKNAME, value).apply()
+    }
+
+    fun userToken(context: Context): String = sp(context).getString(KEY_USER_TOKEN, "") ?: ""
+
+    fun userTokenAt(context: Context): Long = sp(context).getLong(KEY_USER_TOKEN_AT, 0L)
+
+    fun saveUserToken(context: Context, token: String) {
+        sp(context).edit()
+            .putString(KEY_USER_TOKEN, token)
+            .putLong(KEY_USER_TOKEN_AT, System.currentTimeMillis())
+            .apply()
+    }
+
+    fun clearUserToken(context: Context) {
+        sp(context).edit().remove(KEY_USER_TOKEN).remove(KEY_USER_TOKEN_AT).apply()
+    }
+
+    fun subscribeId(context: Context): String = sp(context).getString(KEY_SUB_ID, "") ?: ""
+
+    fun saveSubscribeId(context: Context, id: String) {
+        sp(context).edit().putString(KEY_SUB_ID, id).apply()
     }
 
     fun appKey(context: Context): String = sp(context).getString(KEY_APP_KEY, "") ?: ""
@@ -54,6 +90,10 @@ object Prefs {
     fun peerUserId(context: Context): String = sp(context).getString(KEY_PEER_ID, "") ?: ""
 
     fun openConversationId(context: Context): String = sp(context).getString(KEY_CONVERSATION, "") ?: ""
+
+    fun setConversationId(context: Context, value: String) {
+        sp(context).edit().putString(KEY_CONVERSATION, value).apply()
+    }
 
     fun room(context: Context): String = sp(context).getString(KEY_ROOM, "") ?: ""
 

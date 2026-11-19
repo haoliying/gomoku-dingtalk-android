@@ -304,6 +304,72 @@
                 android:orientation="vertical"
                 android:padding="18dp">
 
+                <TextView
+                    style="@style/Text.Gomoku.Section"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="群消息监听（用户授权）" />
+
+                <TextView
+                    style="@style/Text.Gomoku.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="机器人默认只能收到 @ 它的消息。要用「用户身份」监听整个群的对局消息，需要先用你的钉钉账号授权一次。"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvListenStatus"
+                    style="@style/Text.Gomoku.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="monospace"
+                    android:text="未授权"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnUserLogin"
+                    style="@style/Widget.Gomoku.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:text="① 用户登录授权" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnListen"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:text="② 开启群消息监听" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStopListen"
+                    style="@style/Widget.Gomoku.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:text="停止监听" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/paper_dark"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
