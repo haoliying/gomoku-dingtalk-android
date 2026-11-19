@@ -1,5 +1,8 @@
 package com.gomoku.bot
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
@@ -57,6 +60,7 @@ class DingTalkSetupActivity : AppCompatActivity() {
 
         binding.btnTest.setOnClickListener { testConnection() }
         binding.btnStart.setOnClickListener { startGame() }
+        binding.btnCopyLog.setOnClickListener { copyLog() }
         binding.btnBack.setOnClickListener {
             DingTalkSession.close()
             finish()
@@ -188,8 +192,19 @@ class DingTalkSetupActivity : AppCompatActivity() {
 
     private fun appendLog(text: String) {
         logLines.add("› $text")
-        while (logLines.size > 10) logLines.removeAt(0)
+        while (logLines.size > 200) logLines.removeAt(0)
         binding.tvLog.text = logLines.joinToString("\n")
+    }
+
+    private fun copyLog() {
+        val text = if (logLines.isEmpty()) {
+            binding.tvLog.text.toString()
+        } else {
+            logLines.joinToString("\n")
+        }
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("连接日志", text))
+        toast("日志已复制到剪贴板")
     }
 
     private fun openGame() {

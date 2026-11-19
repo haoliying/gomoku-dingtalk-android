@@ -140,7 +140,7 @@ object DingTalkApi {
             .put("clientId", config.appKey)
             .put("clientSecret", config.appSecret)
             .put("subscriptions", subscriptions)
-            .put("ua", "gomoku-android/1.2.0")
+            .put("ua", "gomoku-android/1.1.2")
         return post("$BASE/v1.0/gateway/connections/open", body.toString(), null)
     }
 
@@ -174,7 +174,11 @@ object DingTalkApi {
                 results.add(ConnResult("Stream 握手", true, "成功"))
             }
         } catch (e: DingTalkApiException) {
-            results.add(ConnResult("Stream 握手", false, e.format("失败")))
+            var detail = e.format("失败")
+            if (e.httpCode == 401 || e.code == "authFailed") {
+                detail += "\n凭据已通过 accessToken 校验，握手失败通常是：① 开放平台「事件订阅」未开启 Stream 模式 ② 应用未发布 ③ 机器人未发布"
+            }
+            results.add(ConnResult("Stream 握手", false, detail))
         } catch (e: Exception) {
             results.add(ConnResult("Stream 握手", false, e.message ?: e.javaClass.simpleName))
         }
