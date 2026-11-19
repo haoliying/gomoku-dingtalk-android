@@ -157,7 +157,7 @@ object DingTalkApi {
         } catch (e: DingTalkApiException) {
             var detail = e.format("失败")
             if (e.code == "invalidClientIdOrSecret" || e.httpCode == 400) {
-                detail += "\n请逐项核对：① AppKey 与 AppSecret 是否填反 ② 是否「企业内部应用」的凭据（非小程序/第三方应用）③ 复制是否完整、无多余字符"
+                detail += "\n请逐项核对：① AppKey 是否以 ding 开头（不是则复制错了来源）② AppKey 与 AppSecret 是否填反 ③ 是否「企业内部应用」的凭据（非小程序/第三方应用）④ 复制是否完整、无多余字符"
             }
             results.add(ConnResult("获取 accessToken", false, detail))
             return results
@@ -193,7 +193,20 @@ object DingTalkApi {
         val key = config.appKey
         val secret = config.appSecret
         val issues = ArrayList<String>()
-        if (!key.startsWith("ding")) issues.add("AppKey 通常以 ding 开头，请确认是否复制正确")
+        val looksUuid = key.length == 36 && key.count { it == '-' } >= 3
+        if (!key.startsWith("ding")) {
+            if (looksUuid) {
+                issues.add(
+                    "AppKey 是 36 位 UUID 格式，不是钉钉 AppKey（企业内部应用 AppKey 必须以 ding 开头，" +
+                        "如 dinge9qpkv3xxxxxx）。你很可能复制了其他平台的 AppID / 应用 ID"
+                )
+            } else {
+                issues.add(
+                    "AppKey 必须以 ding 开头（如 dinge9qpkv3xxxxxx），当前格式不符合。" +
+                        "请到 开放平台 → 应用开发 → 企业内部应用 → 应用信息 → 凭证与基础信息 重新复制"
+                )
+            }
+        }
         if (secret.startsWith("ding")) issues.add("AppSecret 以 ding 开头，很可能与 AppKey 填反了")
         if (key.isNotEmpty() && key.length < 12) issues.add("AppKey 长度偏短，可能未复制完整")
         if (secret.isNotEmpty() && secret.length < 12) issues.add("AppSecret 长度偏短，可能未复制完整")
@@ -202,7 +215,7 @@ object DingTalkApi {
             append("AppKey ").append(mask(key))
             append("；AppSecret ").append(mask(secret))
             if (issues.isNotEmpty()) {
-                append("\n⚠ ").append(issues.joinToString("；"))
+                append("\n⚠ ").append(issues.joinToString("\n⚠ "))
             }
         }
         return ConnResult("凭据检查", true, detail)
